@@ -1,0 +1,5 @@
+<resources>
+  <string name="app_name">Nextdoor Push</string>
+  <string name="notif_channel_name">Nextdoor Alerts</string>
+  <string name="notif_channel_desc">Approval prompts from monitor</string>
+</resources>

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "398969794105",
+    "project_id": "nextdoor-push",
+    "storage_bucket": "nextdoor-push.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:398969794105:android:face4d562a2471b3c0a7e8",
+        "android_client_info": {
+          "package_name": "com.bizclimb.nextdoorpush.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDtGeh_wWyDBBmfz0oYOkVpDqDVIi6uL1A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
