@@ -22,21 +22,32 @@ import androidx.compose.ui.unit.dp
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
+
+  private lateinit var defaultDeviceId: String
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+
+    // Pre compute a stable device id in the Activity scope, not inside a Composable
+    defaultDeviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+      ?: UUID.randomUUID().toString()
+
     setContent {
-      MaterialTheme { AppScreen() }
+      MaterialTheme {
+        AppScreen(defaultDeviceId = defaultDeviceId)
+      }
     }
   }
 }
 
 @Composable
-private fun AppScreen() {
+private fun AppScreen(defaultDeviceId: String) {
   val scope = rememberCoroutineScope()
   var token by remember { mutableStateOf("tap to fetch FCM token") }
-  var deviceId by remember { mutableStateOf("") }
+  var deviceId by remember { mutableStateOf(defaultDeviceId) }
 
   Surface {
     Column(modifier = Modifier.padding(16.dp)) {
@@ -53,11 +64,7 @@ private fun AppScreen() {
         onClick = {
           FirebaseMessaging.getInstance().token.addOnSuccessListener { t ->
             token = t
-            val did = if (deviceId.isNotBlank()) deviceId
-                      else Settings.Secure.getString(
-                        androidx.compose.ui.platform.LocalContext.current.contentResolver,
-                        Settings.Secure.ANDROID_ID
-                      ) ?: java.util.UUID.randomUUID().toString()
+            val did = if (deviceId.isNotBlank()) deviceId else defaultDeviceId
             scope.launch(Dispatchers.IO) {
               Net.registerTokenAllAccounts(did, t)
             }
