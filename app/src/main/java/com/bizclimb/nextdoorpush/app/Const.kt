@@ -14,6 +14,7 @@ object Const {
   const val KEY_TOKEN = "action_token"
   const val KEY_MATCHED_ID = "matched_id"
   const val KEY_ACCOUNT_ID = "account_id"
+  const val KEY_ACCOUNT_LABEL = "account_label"
 
   const val CHANNEL_ID = "nextdoor_push_channel"
 }

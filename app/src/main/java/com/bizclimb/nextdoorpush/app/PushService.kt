@@ -9,22 +9,16 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
 class PushService : FirebaseMessagingService() {
-
   override fun onNewToken(token: String) {
-    // Auto register this device for all accounts on your server
-    // Server will fan out to all accounts except those listed in device_token_exclude
     try {
       val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
         ?: java.util.UUID.randomUUID().toString()
       Net.registerTokenAllAccounts(deviceId, token)
-    } catch (_: Throwable) {
-      // ignore
-    }
+    } catch (_: Throwable) { }
   }
 
   override fun onMessageReceived(msg: RemoteMessage) {
     val data = msg.data
-
     val text = data[Const.KEY_TEXT].orEmpty()
     val approveUrl = data[Const.KEY_APPROVE_URL].orEmpty()
     val closeUrl = data[Const.KEY_CLOSE_URL].orEmpty()
@@ -35,7 +29,6 @@ class PushService : FirebaseMessagingService() {
     val title = if (accountLabel.isNotBlank()) "ND • $accountLabel" else "Nextdoor Match"
     val notifId = matchedId.hashCode()
 
-    // Build broadcast intents for actions
     val approveIntent = Intent(this, ActionReceiver::class.java).apply {
       action = "com.bizclimb.nextdoorpush.app.ACTION_CLICK"
       putExtra("url", approveUrl)
@@ -52,15 +45,11 @@ class PushService : FirebaseMessagingService() {
     }
 
     val piApprove = PendingIntent.getBroadcast(
-      this,
-      notifId,
-      approveIntent,
+      this, notifId, approveIntent,
       PendingIntent.FLAG_UPDATE_CURRENT or BuildConfig.PI_IMMUTABLE
     )
     val piClose = PendingIntent.getBroadcast(
-      this,
-      notifId + 1,
-      closeIntent,
+      this, notifId + 1, closeIntent,
       PendingIntent.FLAG_UPDATE_CURRENT or BuildConfig.PI_IMMUTABLE
     )
 

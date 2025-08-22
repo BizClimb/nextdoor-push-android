@@ -25,11 +25,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    setContent {
-      MaterialTheme {
-        AppScreen()
-      }
-    }
+    setContent { MaterialTheme { AppScreen() } }
   }
 }
 
@@ -52,19 +48,11 @@ private fun AppScreen() {
         onClick = {
           FirebaseMessaging.getInstance().token.addOnSuccessListener { t ->
             token = t
-            val deviceId = Settings.Secure.getString(
-              LocalContext.current.contentResolver,
-              Settings.Secure.ANDROID_ID
-            ) ?: java.util.UUID.randomUUID().toString()
-            scope.launch(Dispatchers.IO) {
-              Net.registerTokenAllAccounts(deviceId, t)
-            }
+            scope.launch(Dispatchers.IO) { Net.registerToken(accountId, t) }
           }
         },
         modifier = Modifier.padding(top = 12.dp)
-      ) {
-        Text("Fetch and Register Token")
-      }
+      ) { Text("Fetch and Register Token") }
       Text(token, modifier = Modifier.padding(top = 12.dp))
     }
   }
