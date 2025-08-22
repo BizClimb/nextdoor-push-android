@@ -1,6 +1,7 @@
 package com.bizclimb.nextdoorpush.app
 
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
@@ -25,7 +26,9 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    setContent { MaterialTheme { AppScreen() } }
+    setContent {
+      MaterialTheme { AppScreen() }
+    }
   }
 }
 
@@ -33,26 +36,36 @@ class MainActivity : ComponentActivity() {
 private fun AppScreen() {
   val scope = rememberCoroutineScope()
   var token by remember { mutableStateOf("tap to fetch FCM token") }
-  var accountId by remember { mutableStateOf("1") }
+  var deviceId by remember { mutableStateOf("") }
 
   Surface {
     Column(modifier = Modifier.padding(16.dp)) {
       Text("Nextdoor Push Helper", style = MaterialTheme.typography.titleLarge)
+
       OutlinedTextField(
-        value = accountId,
-        onValueChange = { accountId = it },
-        label = { Text("Account ID for registration") },
+        value = deviceId,
+        onValueChange = { deviceId = it },
+        label = { Text("Device ID") },
         modifier = Modifier.padding(top = 12.dp)
       )
+
       Button(
         onClick = {
           FirebaseMessaging.getInstance().token.addOnSuccessListener { t ->
             token = t
-            scope.launch(Dispatchers.IO) { Net.registerToken(accountId, t) }
+            val did = if (deviceId.isNotBlank()) deviceId
+                      else Settings.Secure.getString(
+                        androidx.compose.ui.platform.LocalContext.current.contentResolver,
+                        Settings.Secure.ANDROID_ID
+                      ) ?: java.util.UUID.randomUUID().toString()
+            scope.launch(Dispatchers.IO) {
+              Net.registerTokenAllAccounts(did, t)
+            }
           }
         },
         modifier = Modifier.padding(top = 12.dp)
       ) { Text("Fetch and Register Token") }
+
       Text(token, modifier = Modifier.padding(top = 12.dp))
     }
   }
