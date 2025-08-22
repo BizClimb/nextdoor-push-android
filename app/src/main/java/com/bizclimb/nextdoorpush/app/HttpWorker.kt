@@ -20,7 +20,8 @@ class HttpWorker(appContext: Context, workerParams: WorkerParameters) :
     val verb = inputData.getString("verb") ?: "action"
 
     return try {
-      val req = Request.Builder().url(url).get().build()
+      val finalUrl = if (url.contains("?")) "$url&src=android" else "$url?src=android"
+      val req = Request.Builder().url(finalUrl).get().build()
       client.newCall(req).execute().use { resp ->
         val code = resp.code
         val ok = resp.isSuccessful
