@@ -1,9 +1,13 @@
 package com.bizclimb.nextdoorpush.app
 
+import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.content.ContextCompat
+import androidx.core.app.ActivityCompat
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -31,13 +35,30 @@ class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
-    // Pre compute a stable device id in the Activity scope, not inside a Composable
+    // ask for Android 13+ notification permission
+    requestPostNotificationsIfNeeded()
+
     defaultDeviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
       ?: UUID.randomUUID().toString()
 
     setContent {
       MaterialTheme {
         AppScreen(defaultDeviceId = defaultDeviceId)
+      }
+    }
+  }
+
+  private fun requestPostNotificationsIfNeeded() {
+    if (Build.VERSION.SDK_INT >= 33) {
+      val granted = ContextCompat.checkSelfPermission(
+        this, Manifest.permission.POST_NOTIFICATIONS
+      ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+      if (!granted) {
+        ActivityCompat.requestPermissions(
+          this,
+          arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+          1001
+        )
       }
     }
   }

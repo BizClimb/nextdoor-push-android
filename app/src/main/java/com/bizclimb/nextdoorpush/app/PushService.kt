@@ -4,7 +4,6 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
@@ -61,11 +60,10 @@ class PushService : FirebaseMessagingService() {
       .setStyle(NotificationCompat.BigTextStyle().bigText(text))
       .setPriority(NotificationCompat.PRIORITY_HIGH)
       .setAutoCancel(true)
-
-    // approve first then close
     if (approveUrl.isNotBlank()) builder.addAction(0, "Post", piApprove)
     if (closeUrl.isNotBlank()) builder.addAction(0, "Close", piClose)
 
-    NotificationManagerCompat.from(this).notify(notifId, builder.build())
+    // central notify with channel and permission checks
+    Notif.notify(this, notifId, builder)
   }
 }

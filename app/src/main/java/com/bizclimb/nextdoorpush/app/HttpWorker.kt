@@ -1,12 +1,13 @@
 package com.bizclimb.nextdoorpush.app
 
 import android.content.Context
+import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.IOException
 
 class HttpWorker(appContext: Context, workerParams: WorkerParameters) :
   Worker(appContext, workerParams) {
@@ -19,34 +20,37 @@ class HttpWorker(appContext: Context, workerParams: WorkerParameters) :
     val verb = inputData.getString("verb") ?: "action"
 
     return try {
-      val req = Request.Builder().url(url).build()
-      val resp = client.newCall(req).execute()
+      val req = Request.Builder().url(url).get().build()
+      client.newCall(req).execute().use { resp ->
+        val code = resp.code
+        val ok = resp.isSuccessful
+        Log.d("NDPush", "HttpWorker verb=$verb mid=$matchedId code=$code ok=$ok url=${url.take(120)}")
 
-      if (!resp.isSuccessful) {
-        val body = resp.body?.string()?.take(200) ?: "<empty>"
-        notifyFailure("HTTP ${resp.code}", verb, matchedId, body)
-        Result.retry()
-      } else {
-        // no success notification
-        Result.success()
+        if (ok) return Result.success()
+
+        val body = resp.body?.string()?.take(300) ?: "<empty>"
+        notifyFailure(matchedId, verb, "HTTP $code", body)
+        // retry only for 5xx
+        if (code in 500..599) Result.retry() else Result.failure()
       }
-    } catch (e: Exception) {
-      notifyFailure("Exception: ${e.message}", verb, matchedId, e.stackTraceToString())
+    } catch (io: IOException) {
+      notifyFailure(matchedId, verb, "Network error", io.message ?: "")
       Result.retry()
+    } catch (t: Throwable) {
+      notifyFailure(matchedId, verb, "Exception", t.message ?: "")
+      Result.failure()
     }
   }
 
-  private fun notifyFailure(reason: String, verb: String, matchedId: String, detail: String) {
-    val notifId = matchedId.hashCode()
-
-    val notif = NotificationCompat.Builder(applicationContext, "push_channel")
-      .setSmallIcon(android.R.drawable.ic_dialog_alert)
+  private fun notifyFailure(matchedId: String, verb: String, reason: String, detail: String) {
+    val builder = NotificationCompat.Builder(applicationContext, Const.CHANNEL_ID)
+      .setSmallIcon(android.R.drawable.stat_notify_error)
       .setContentTitle("Action failed: $verb")
       .setContentText(reason)
       .setStyle(NotificationCompat.BigTextStyle().bigText("$reason\n$detail"))
       .setPriority(NotificationCompat.PRIORITY_HIGH)
-      .build()
+      .setAutoCancel(true)
 
-    NotificationManagerCompat.from(applicationContext).notify(notifId + 1000, notif)
+    Notif.notify(applicationContext, matchedId.hashCode() + 1000, builder)
   }
 }
