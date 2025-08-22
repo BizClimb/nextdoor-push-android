@@ -17,23 +17,29 @@ object Net {
     http.newCall(req).execute().use { resp -> return resp.isSuccessful }
   }
 
-  // legacy single account register used by the button in MainActivity
-  fun registerToken(accountId: String, token: String): Boolean {
-    val form = FormBody.Builder()
-      .add("account_id", accountId)
-      .add("fcm_token", token)
-      .build()
-    val req = Request.Builder().url(Const.REGISTER_URL).post(form).build()
-    http.newCall(req).execute().use { resp -> return resp.isSuccessful }
-  }
-
-  // new global registration called from PushService.onNewToken
+  /** New register for all accounts using device_id and token */
   fun registerTokenAllAccounts(deviceId: String, token: String): Boolean {
     val form = FormBody.Builder()
       .add("device_id", deviceId)
       .add("fcm_token", token)
       .build()
-    val req = Request.Builder().url(Const.REGISTER_URL).post(form).build()
+    val req = Request.Builder()
+      .url(Const.REGISTER_URL)
+      .post(form)
+      .build()
+    http.newCall(req).execute().use { resp -> return resp.isSuccessful }
+  }
+
+  /** Keep a helper for targeted single account registration if ever needed */
+  fun registerTokenSingleAccount(accountId: String, token: String): Boolean {
+    val form = FormBody.Builder()
+      .add("account_id", accountId)
+      .add("fcm_token", token)
+      .build()
+    val req = Request.Builder()
+      .url(Const.REGISTER_URL)
+      .post(form)
+      .build()
     http.newCall(req).execute().use { resp -> return resp.isSuccessful }
   }
 }
