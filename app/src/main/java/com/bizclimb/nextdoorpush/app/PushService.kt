@@ -2,6 +2,7 @@ package com.bizclimb.nextdoorpush.app
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -10,52 +11,70 @@ import com.google.firebase.messaging.RemoteMessage
 class PushService : FirebaseMessagingService() {
 
   override fun onNewToken(token: String) {
-    // You can call Net.registerToken here if you want auto registration
-    // You would need a stored account id for that
+    // Auto register this device for all accounts on your server
+    // Server will fan out to all accounts except those listed in device_token_exclude
+    try {
+      val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+        ?: java.util.UUID.randomUUID().toString()
+      Net.registerTokenAllAccounts(deviceId, token)
+    } catch (_: Throwable) {
+      // ignore
+    }
   }
 
   override fun onMessageReceived(msg: RemoteMessage) {
     val data = msg.data
-    val text = data[Const.KEY_TEXT] ?: "(no text)"
-    val approve = data[Const.KEY_APPROVE_URL] ?: ""
-    val close = data[Const.KEY_CLOSE_URL] ?: ""
-    val matchedId = data[Const.KEY_MATCHED_ID] ?: System.currentTimeMillis().toString()
 
+    val text = data[Const.KEY_TEXT].orEmpty()
+    val approveUrl = data[Const.KEY_APPROVE_URL].orEmpty()
+    val closeUrl = data[Const.KEY_CLOSE_URL].orEmpty()
+    val matchedId = data[Const.KEY_MATCHED_ID]?.ifBlank { null }
+      ?: System.currentTimeMillis().toString()
+    val accountLabel = data[Const.KEY_ACCOUNT_LABEL].orEmpty()
+
+    val title = if (accountLabel.isNotBlank()) "ND • $accountLabel" else "Nextdoor Match"
+    val notifId = matchedId.hashCode()
+
+    // Build broadcast intents for actions
     val approveIntent = Intent(this, ActionReceiver::class.java).apply {
       action = "com.bizclimb.nextdoorpush.app.ACTION_CLICK"
-      putExtra("url", approve)
+      putExtra("url", approveUrl)
       putExtra("matched_id", matchedId)
-      putExtra("verb", "POSTED")
+      putExtra("verb", "post")
+      putExtra("notif_id", notifId)
     }
     val closeIntent = Intent(this, ActionReceiver::class.java).apply {
       action = "com.bizclimb.nextdoorpush.app.ACTION_CLICK"
-      putExtra("url", close)
+      putExtra("url", closeUrl)
       putExtra("matched_id", matchedId)
-      putExtra("verb", "CLOSED")
+      putExtra("verb", "close")
+      putExtra("notif_id", notifId)
     }
 
     val piApprove = PendingIntent.getBroadcast(
-      this, matchedId.hashCode(), approveIntent,
+      this,
+      notifId,
+      approveIntent,
       PendingIntent.FLAG_UPDATE_CURRENT or BuildConfig.PI_IMMUTABLE
     )
     val piClose = PendingIntent.getBroadcast(
-      this, matchedId.hashCode() + 1, closeIntent,
+      this,
+      notifId + 1,
+      closeIntent,
       PendingIntent.FLAG_UPDATE_CURRENT or BuildConfig.PI_IMMUTABLE
     )
 
     val notif = NotificationCompat.Builder(this, Const.CHANNEL_ID)
       .setSmallIcon(android.R.drawable.stat_notify_more)
-      .setContentTitle("Nextdoor match")
-      .setContentText(text)
+      .setContentTitle(title)
+      .setContentText(text.take(140))
       .setStyle(NotificationCompat.BigTextStyle().bigText(text))
       .setPriority(NotificationCompat.PRIORITY_HIGH)
-      .addAction(0, "Post", piApprove)
       .addAction(0, "Close", piClose)
+      .addAction(0, "Post", piApprove)
       .setAutoCancel(true)
       .build()
 
-    with(NotificationManagerCompat.from(this)) {
-      notify(matchedId.hashCode(), notif)
-    }
+    NotificationManagerCompat.from(this).notify(notifId, notif)
   }
 }
