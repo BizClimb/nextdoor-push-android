@@ -9,6 +9,7 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
 class PushService : FirebaseMessagingService() {
+
   override fun onNewToken(token: String) {
     try {
       val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
@@ -46,24 +47,25 @@ class PushService : FirebaseMessagingService() {
 
     val piApprove = PendingIntent.getBroadcast(
       this, notifId, approveIntent,
-      PendingIntent.FLAG_UPDATE_CURRENT or BuildConfig.PI_IMMUTABLE
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
     val piClose = PendingIntent.getBroadcast(
       this, notifId + 1, closeIntent,
-      PendingIntent.FLAG_UPDATE_CURRENT or BuildConfig.PI_IMMUTABLE
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 
-    val notif = NotificationCompat.Builder(this, Const.CHANNEL_ID)
+    val builder = NotificationCompat.Builder(this, Const.CHANNEL_ID)
       .setSmallIcon(android.R.drawable.stat_notify_more)
       .setContentTitle(title)
       .setContentText(text.take(140))
       .setStyle(NotificationCompat.BigTextStyle().bigText(text))
       .setPriority(NotificationCompat.PRIORITY_HIGH)
-      .addAction(0, "Close", piClose)
-      .addAction(0, "Post", piApprove)
       .setAutoCancel(true)
-      .build()
 
-    NotificationManagerCompat.from(this).notify(notifId, notif)
+    // order: approve first then close
+    if (approveUrl.isNotBlank()) builder.addAction(0, "Post", piApprove)
+    if (closeUrl.isNotBlank()) builder.addAction(0, "Close", piClose)
+
+    NotificationManagerCompat.from(this).notify(notifId, builder.build())
   }
 }
