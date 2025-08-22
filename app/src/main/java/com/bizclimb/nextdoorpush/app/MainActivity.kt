@@ -52,8 +52,12 @@ private fun AppScreen() {
         onClick = {
           FirebaseMessaging.getInstance().token.addOnSuccessListener { t ->
             token = t
+            val deviceId = Settings.Secure.getString(
+              LocalContext.current.contentResolver,
+              Settings.Secure.ANDROID_ID
+            ) ?: java.util.UUID.randomUUID().toString()
             scope.launch(Dispatchers.IO) {
-              Net.registerToken(accountId, t)
+              Net.registerTokenAllAccounts(deviceId, t)
             }
           }
         },

@@ -14,9 +14,10 @@ object Net {
 
   fun get(url: String): Boolean {
     val req = Request.Builder().url(url).get().build()
-    Net.http.newCall(req).execute().use { resp -> return resp.isSuccessful }
+    http.newCall(req).execute().use { resp -> return resp.isSuccessful }
   }
 
+  // old per account registration (still available for manual tests)
   fun registerToken(accountId: String, token: String): Boolean {
     val form = FormBody.Builder()
       .add("account_id", accountId)
@@ -26,6 +27,19 @@ object Net {
       .url(Const.REGISTER_URL)
       .post(form)
       .build()
-    Net.http.newCall(req).execute().use { resp -> return resp.isSuccessful }
+    http.newCall(req).execute().use { resp -> return resp.isSuccessful }
+  }
+
+  // new global registration used by PushService.onNewToken
+  fun registerTokenAllAccounts(deviceId: String, token: String): Boolean {
+    val form = FormBody.Builder()
+      .add("device_id", deviceId)
+      .add("fcm_token", token)
+      .build()
+    val req = Request.Builder()
+      .url(Const.REGISTER_URL)
+      .post(form)
+      .build()
+    http.newCall(req).execute().use { resp -> return resp.isSuccessful }
   }
 }
