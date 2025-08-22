@@ -3,8 +3,21 @@ package com.bizclimb.nextdoorpush.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -14,30 +27,41 @@ class MainActivity : ComponentActivity() {
     super.onCreate(savedInstanceState)
     setContent {
       MaterialTheme {
-        val scope = rememberCoroutineScope()
-        var token by remember { mutableStateOf("tap to fetch FCM token") }
-        var accountId by remember { mutableStateOf("1") }
-
-        Surface {
-          Column {
-            Text("Nextdoor Push Helper")
-            OutlinedTextField(
-              value = accountId,
-              onValueChange = { accountId = it },
-              label = { Text("Account ID for registration") }
-            )
-            Button(onClick = {
-              FirebaseMessaging.getInstance().token.addOnSuccessListener { t ->
-                token = t
-                scope.launch(Dispatchers.IO) {
-                  Net.registerToken(accountId, t)
-                }
-              }
-            }) { Text("Fetch and Register Token") }
-            Text(token)
-          }
-        }
+        AppScreen()
       }
+    }
+  }
+}
+
+@Composable
+private fun AppScreen() {
+  val scope = rememberCoroutineScope()
+  var token by remember { mutableStateOf("tap to fetch FCM token") }
+  var accountId by remember { mutableStateOf("1") }
+
+  Surface {
+    Column(modifier = Modifier.padding(16.dp)) {
+      Text("Nextdoor Push Helper", style = MaterialTheme.typography.titleLarge)
+      OutlinedTextField(
+        value = accountId,
+        onValueChange = { accountId = it },
+        label = { Text("Account ID for registration") },
+        modifier = Modifier.padding(top = 12.dp)
+      )
+      Button(
+        onClick = {
+          FirebaseMessaging.getInstance().token.addOnSuccessListener { t ->
+            token = t
+            scope.launch(Dispatchers.IO) {
+              Net.registerToken(accountId, t)
+            }
+          }
+        },
+        modifier = Modifier.padding(top = 12.dp)
+      ) {
+        Text("Fetch and Register Token")
+      }
+      Text(token, modifier = Modifier.padding(top = 12.dp))
     }
   }
 }
