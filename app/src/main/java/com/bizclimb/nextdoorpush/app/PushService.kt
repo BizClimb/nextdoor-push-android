@@ -62,7 +62,7 @@ class PushService : FirebaseMessagingService() {
       .setPriority(NotificationCompat.PRIORITY_HIGH)
       .setAutoCancel(true)
 
-    // order: approve first then close
+    // approve first then close
     if (approveUrl.isNotBlank()) builder.addAction(0, "Post", piApprove)
     if (closeUrl.isNotBlank()) builder.addAction(0, "Close", piClose)
 
