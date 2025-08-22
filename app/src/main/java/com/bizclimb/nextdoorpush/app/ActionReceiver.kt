@@ -10,23 +10,19 @@ import androidx.work.workDataOf
 import android.util.Log
 
 class ActionReceiver : BroadcastReceiver() {
+  // ActionReceiver.kt snippet for reference
   override fun onReceive(context: Context, intent: Intent) {
-    val url       = intent.getStringExtra("url").orEmpty()
-    val matchedId = intent.getStringExtra("matched_id").orEmpty()
-    val verb      = intent.getStringExtra("verb").orEmpty()
-    val notifId   = intent.getIntExtra("notif_id", 0)
+    val url      = intent.getStringExtra("url") ?: return
+    val matched  = intent.getStringExtra("matched_id") ?: "0"
+    val verb     = intent.getStringExtra("verb") ?: "action"
+    val notifId  = intent.getIntExtra("notif_id", 0)
 
-    // Close the visible notification right away
-    if (notifId != 0) NotificationManagerCompat.from(context).cancel(notifId)
-
-    if (url.isBlank()) {
-      Log.w("NDPush", "ActionReceiver missing url for matched_id=$matchedId verb=$verb")
-      return
-    }
+    // Close the notification immediately on tap
+    NotificationManagerCompat.from(context).cancel(notifId)
 
     val data = workDataOf(
       "url" to url,
-      "matched_id" to matchedId,
+      "matched_id" to matched,
       "verb" to verb
     )
     val req = OneTimeWorkRequestBuilder<HttpWorker>()
