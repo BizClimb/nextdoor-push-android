@@ -30,6 +30,10 @@
       </intent-filter>
     </service>
 
+    <receiver
+    android:name=".ActionReceiver"
+    android:exported="false" />
+
     <!-- Startup provider not needed. Work runtime supplies one already. -->
   </application>
 </manifest>
