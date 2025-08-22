@@ -1,13 +1,11 @@
 package com.bizclimb.nextdoorpush.app
 
 import android.content.Context
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.IOException
 
 class HttpWorker(appContext: Context, workerParams: WorkerParameters) :
   Worker(appContext, workerParams) {
@@ -18,40 +16,44 @@ class HttpWorker(appContext: Context, workerParams: WorkerParameters) :
     val url = inputData.getString("url") ?: return Result.failure()
     val matchedId = inputData.getString("matched_id") ?: "0"
     val verb = inputData.getString("verb") ?: "action"
+    val notifId = inputData.getInt("notif_id", matchedId.hashCode())
 
     return try {
-      val finalUrl = if (url.contains("?")) "$url&src=android" else "$url?src=android"
-      val req = Request.Builder().url(finalUrl).get().build()
+      val req = Request.Builder().url(url).build()
       client.newCall(req).execute().use { resp ->
+        if (resp.isSuccessful) {
+          // nothing to show on success
+          return Result.success()
+        }
+
         val code = resp.code
-        val ok = resp.isSuccessful
-        Log.d("NDPush", "HttpWorker verb=$verb mid=$matchedId code=$code ok=$ok url=${url.take(120)}")
+        val body = resp.body?.string()?.take(500) ?: "<empty>"
 
-        if (ok) return Result.success()
+        // do not retry for tokens already handled or conflict
+        if (code == 410 || code == 409) {
+          notifyFailure("HTTP $code", verb, matchedId, body, noRetry = true)
+          return Result.success()
+        }
 
-        val body = resp.body?.string()?.take(300) ?: "<empty>"
-        notifyFailure(matchedId, verb, "HTTP $code", body)
-        // retry only for 5xx
-        if (code in 500..599) Result.retry() else Result.failure()
+        notifyFailure("HTTP $code", verb, matchedId, body, noRetry = false)
+        return Result.retry()
       }
-    } catch (io: IOException) {
-      notifyFailure(matchedId, verb, "Network error", io.message ?: "")
-      Result.retry()
-    } catch (t: Throwable) {
-      notifyFailure(matchedId, verb, "Exception", t.message ?: "")
-      Result.failure()
+    } catch (e: Exception) {
+      notifyFailure("Exception ${e.javaClass.simpleName}", verb, matchedId, e.message ?: "", noRetry = false)
+      return Result.retry()
     }
   }
 
-  private fun notifyFailure(matchedId: String, verb: String, reason: String, detail: String) {
+  private fun notifyFailure(reason: String, verb: String, matchedId: String, detail: String, noRetry: Boolean) {
     val builder = NotificationCompat.Builder(applicationContext, Const.CHANNEL_ID)
-      .setSmallIcon(android.R.drawable.stat_notify_error)
+      .setSmallIcon(android.R.drawable.ic_dialog_alert)
       .setContentTitle("Action failed: $verb")
       .setContentText(reason)
       .setStyle(NotificationCompat.BigTextStyle().bigText("$reason\n$detail"))
       .setPriority(NotificationCompat.PRIORITY_HIGH)
       .setAutoCancel(true)
 
+    // use a separate id so it does not resurrect the original notification
     Notif.notify(applicationContext, matchedId.hashCode() + 1000, builder)
   }
 }

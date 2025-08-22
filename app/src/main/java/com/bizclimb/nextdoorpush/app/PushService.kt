@@ -2,6 +2,7 @@ package com.bizclimb.nextdoorpush.app
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.net.Uri
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -29,8 +30,10 @@ class PushService : FirebaseMessagingService() {
     val title = if (accountLabel.isNotBlank()) "ND • $accountLabel" else "Nextdoor Match"
     val notifId = matchedId.hashCode()
 
+    // make intents unique using both requestCode and data URI
     val approveIntent = Intent(this, ActionReceiver::class.java).apply {
       action = "com.bizclimb.nextdoorpush.app.ACTION_CLICK"
+      data = Uri.parse("ndpush://action/$matchedId?verb=post")
       putExtra("url", approveUrl)
       putExtra("matched_id", matchedId)
       putExtra("verb", "post")
@@ -38,6 +41,7 @@ class PushService : FirebaseMessagingService() {
     }
     val closeIntent = Intent(this, ActionReceiver::class.java).apply {
       action = "com.bizclimb.nextdoorpush.app.ACTION_CLICK"
+      data = Uri.parse("ndpush://action/$matchedId?verb=close")
       putExtra("url", closeUrl)
       putExtra("matched_id", matchedId)
       putExtra("verb", "close")
@@ -45,12 +49,16 @@ class PushService : FirebaseMessagingService() {
     }
 
     val piApprove = PendingIntent.getBroadcast(
-      this, notifId, approveIntent,
-      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+      this,
+      notifId, // unique per notification
+      approveIntent,
+      PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
     val piClose = PendingIntent.getBroadcast(
-      this, notifId + 1, closeIntent,
-      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+      this,
+      notifId + 1,
+      closeIntent,
+      PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 
     val builder = NotificationCompat.Builder(this, Const.CHANNEL_ID)
@@ -60,10 +68,9 @@ class PushService : FirebaseMessagingService() {
       .setStyle(NotificationCompat.BigTextStyle().bigText(text))
       .setPriority(NotificationCompat.PRIORITY_HIGH)
       .setAutoCancel(true)
-    if (approveUrl.isNotBlank()) builder.addAction(0, "Post", piApprove)
-    if (closeUrl.isNotBlank()) builder.addAction(0, "Close", piClose)
+      .addAction(0, "Post", piApprove)   // approve first
+      .addAction(0, "Close", piClose)    // close second
 
-    // central notify with channel and permission checks
     Notif.notify(this, notifId, builder)
   }
 }
