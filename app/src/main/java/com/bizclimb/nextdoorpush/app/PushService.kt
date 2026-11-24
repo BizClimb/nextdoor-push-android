@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
@@ -76,7 +77,8 @@ class PushService : FirebaseMessagingService() {
       .setAutoCancel(true)
 
     // keep Post first then Close
-    if (approveUrl.isNotBlank()) builder.addAction(0, "Post", piApprove)
+    val isBidGreat = approveUrl.toHttpUrlOrNull()?.let(BidGreatAction::isApprovalLink) == true
+    if (approveUrl.isNotBlank()) builder.addAction(0, if (isBidGreat) "Approve" else "Post", piApprove)
     if (closeUrl.isNotBlank()) builder.addAction(0, "Close", piClose)
 
     Notif.notify(this, notifId, builder)

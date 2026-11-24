@@ -7,23 +7,24 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import android.util.Log
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 class ActionReceiver : BroadcastReceiver() {
-  // ActionReceiver.kt snippet for reference
   override fun onReceive(context: Context, intent: Intent) {
     val url      = intent.getStringExtra("url") ?: return
     val matched  = intent.getStringExtra("matched_id") ?: "0"
     val verb     = intent.getStringExtra("verb") ?: "action"
     val notifId  = intent.getIntExtra("notif_id", 0)
 
-    // Close the notification immediately on tap
-    NotificationManagerCompat.from(context).cancel(notifId)
+    // BidGreat alerts stay available until HQ acknowledges the decision.
+    val signedApproval = url.toHttpUrlOrNull()?.let(BidGreatAction::isApprovalLink) == true
+    if (!signedApproval) NotificationManagerCompat.from(context).cancel(notifId)
 
     val data = workDataOf(
       "url" to url,
       "matched_id" to matched,
-      "verb" to verb
+      "verb" to verb,
+      "notif_id" to notifId
     )
     val req = OneTimeWorkRequestBuilder<HttpWorker>()
       .setInputData(data)
